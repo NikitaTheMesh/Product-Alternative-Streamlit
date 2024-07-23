@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 
 # Title of the Streamlit app
-st.title("Streamlit Input Example")
+st.title("Product Finder App")
 
 # Example displayed on the website to explain model number input
 st.write("### Example Model Number Format:")
@@ -54,13 +54,13 @@ def preprocess_additional_file(df_Leviat):
     
     return result_df
 
-# Function to fetch alternative products by model number from combined CSVs
+# Function to fetch alternative products by model number from combined CSVs (Schoek)
 def fetch_alternative_products_by_model(df_Schoeck, encoded_value):
     # Fetch the specific product details
     specific_product = df_Schoeck[df_Schoeck['Encoded'] == encoded_value]
     
     if specific_product.empty:
-        st.write("No such product found in the combined CSV files.")
+        st.write("No such product found in the Schoek files.")
         return pd.DataFrame(), pd.DataFrame()
     
     # Extract MrD, vRd, and height values
@@ -83,7 +83,7 @@ def fetch_alternative_products_by_model(df_Schoeck, encoded_value):
 
     return specific_product, filtered_df
 
-# Function to fetch alternative products by specifications from combined CSVs
+# Function to fetch alternative products by specifications from combined CSVs (Schoek)
 def fetch_alternative_products_by_specs(df_Schoeck, mrd_value, vrd_value, height_value):
     # Calculate the range for MrD and vRd
     mrd_min = mrd_value * 1.0  # 100% of the value
@@ -110,19 +110,19 @@ def fetch_alternative_products_by_specs(df_Schoeck, mrd_value, vrd_value, height
 
     return filtered_df
 
-# Function to fetch products from additional file by model number
+# Function to fetch products from additional file by model number (Leviat)
 def fetch_products_from_additional_file_by_model(df_Leviat, encoded_value):
     preprocessed_df = preprocess_additional_file(df_Leviat)
     
     specific_product = preprocessed_df[preprocessed_df['new_product_type'] == encoded_value]
     
     if specific_product.empty:
-        st.write("No such product found in the additional file.")
+        st.write("No such product found in the Leviat files.")
         return pd.DataFrame()
     
     return specific_product
 
-# Function to fetch products from additional file by specifications
+# Function to fetch products from additional file by specifications (Leviat)
 def fetch_products_from_additional_file_by_specs(df_Leviat, mrd_value, vrd_value, height_value):
     preprocessed_df = preprocess_additional_file(df_Leviat)
     
@@ -172,18 +172,18 @@ if input_type == "Model Number":
                 else:
                     return [''] * len(row)
             
-            st.write("Your Alternative Products from Combined CSVs:")
+            st.write("Your Alternative Products from Schoeck CSVs:")
             st.write(alternative_products.style.apply(highlight_product, axis=1))
         else:
-            st.write("No alternative products found in the combined CSV files.")
+            st.write("No alternative products found in the Schoeck files.")
         
         # Fetch and display additional products based on model number
         additional_products = fetch_products_from_additional_file_by_model(df_Leviat, encoded_value)
         if not additional_products.empty:
-            st.write("Additional Products from Additional CSV:")
+            st.write("Additional Products from Leviat CSVs:")
             st.write(additional_products)
         else:
-            st.write("No additional products found in the additional file.")
+            st.write("No additional products found in the Leviat files.")
 
 else:
     # Input boxes for specifications
@@ -198,18 +198,18 @@ else:
         if not alternative_products.empty:
             alternative_products = alternative_products.drop(columns=['TableName'])
 
-            st.write("Your Alternative Products from Combined CSVs:")
+            st.write("Your Alternative Products from Schoeck CSVs:")
             st.write(alternative_products)
         else:
-            st.write("No alternative products found in the combined CSV files.")
+            st.write("No alternative products found in the Schoeck files.")
         
         # Fetch and display additional products based on specifications
         additional_products = fetch_products_from_additional_file_by_specs(df_Leviat, mrd_value, vrd_value, height_value)
         if not additional_products.empty:
-            st.write("Additional Products from Additional CSV:")
+            st.write("Additional Products from Leviat CSVs:")
             st.write(additional_products)
         else:
-            st.write("No additional products found in the additional file.")
+            st.write("No additional products found in the Leviat files.")
 
 # Explanation of methods
 st.write("## There are two ways to use this app:")
