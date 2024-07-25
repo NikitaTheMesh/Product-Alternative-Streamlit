@@ -11,11 +11,11 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.write("### Schoek Example:")
-    st.write("T-D-MM1-VV2-REI120-CV35-X80-H170-6.0")
+    st.write("T-K-M9-VV1-REI120-CV35-X80-H200-L1000-6.2")
 
 with col2:
     st.write("### Halfen/Leviat Example:")
-    st.write("HIT-HP MVX-0708-27-100-45")
+    st.write("HIT_SP-MVX-1407-16-100-35")
 
 # Paths to the CSV files
 csv_path_1 = r"Isokorb_T_Updated.csv"
