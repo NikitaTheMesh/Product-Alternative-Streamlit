@@ -18,10 +18,10 @@ with col2:
     st.write("HIT-HP MVX-0708-27-100-45")
 
 # Paths to the CSV files
-csv_path_1 = r"Isokorb_T_combined_cleaned.csv"
-csv_path_2 = r"Isokorb_XT_combined_cleaned.csv"
-csv_path_Leviat_1 = r"masterfile_HIT_HP.csv"
-csv_path_Leviat_2 = r"masterfile_HIT_SP.csv"
+csv_path_1 = r"Isokorb_T_Updated.csv"
+csv_path_2 = r"Isokorb_XT_Updated.csv"
+csv_path_Leviat_1 = r"HIT-HP_Updated.csv"
+csv_path_Leviat_2 = r"HIT-SP_Updated.csv"
 
 # Load the CSV files
 df1 = pd.read_csv(csv_path_1)
@@ -52,15 +52,24 @@ def preprocess_additional_file(df_Leviat):
     ).reset_index()
     return result_df
 
+# Preprocessing function for Schoeck data
+def preprocess_schoeck_file(df_Schoeck):
+    df_Schoeck['mRd'] = df_Schoeck['mRd'].astype(str).str.replace(',', '.').str.replace('±', '').str.replace('-', '0').astype(float)
+    df_Schoeck['vRd'] = df_Schoeck['vRd'].astype(str).str.replace(',', '.').str.replace('±', '').str.replace('-', '0').astype(float)
+    return df_Schoeck
+
+# Apply preprocessing to the Schoeck dataframe
+df_Schoeck = preprocess_schoeck_file(df_Schoeck)
+
 # Function to fetch specifications by model number from Schoeck
-def fetch_specs_by_model_schoeck(df_Schoeck, encoded_value):
-    specific_product = df_Schoeck[df_Schoeck['Encoded'] == encoded_value]
+def fetch_specs_by_model_schoeck(df_Schoeck, product_name):
+    specific_product = df_Schoeck[df_Schoeck['product_name'] == product_name]
     if specific_product.empty:
         st.write("No such product found in the Schoeck's Database.")
         return None, None, None
-    mrd_value = specific_product['MrD'].values[0]
+    mrd_value = specific_product['mRd'].values[0]
     vrd_value = specific_product['vRd'].values[0]
-    height_value = int(encoded_value.split('-')[7][1:])  # Extract height from model number
+    height_value = int(product_name.split('-')[7][1:])  # Extract height from model number
     return mrd_value, vrd_value, height_value
 
 # Function to fetch specifications by model number from Leviat
@@ -77,12 +86,12 @@ def fetch_specs_by_model_leviat(df_Leviat, encoded_value):
 # Function to fetch alternative products by specifications from combined CSVs (Schoeck and Leviat)
 def fetch_alternative_products_by_specs(df_Schoeck, df_Leviat, mrd_value, vrd_value, height_value, mrd_min, mrd_max, vrd_min, vrd_max, height_min, height_max):
     # Ensure 'Height' column is numeric
-    df_Schoeck['Height'] = pd.to_numeric(df_Schoeck['Encoded'].str.extract(r'H(\d+)')[0], errors='coerce')
+    df_Schoeck['Height'] = pd.to_numeric(df_Schoeck['product_name'].str.extract(r'H(\d+)')[0], errors='coerce')
     df_Schoeck_filtered = df_Schoeck[
-        (df_Schoeck['MrD'] >= mrd_min) & (df_Schoeck['MrD'] <= mrd_max) &
+        (df_Schoeck['mRd'] >= mrd_min) & (df_Schoeck['mRd'] <= mrd_max) &
         (df_Schoeck['vRd'] >= vrd_min) & (df_Schoeck['vRd'] <= vrd_max) &
         (df_Schoeck['Height'].between(height_min, height_max))
-    ]
+    ][['product_name', 'mRd', 'vRd', 'Height']]  # Rearrange columns
 
     preprocessed_df_leviat = preprocess_additional_file(df_Leviat)
     preprocessed_df_leviat[['MRD_min', 'MRD_max']] = preprocessed_df_leviat['MRD_Range'].str.split('-', expand=True).astype(float)
@@ -98,8 +107,7 @@ def fetch_alternative_products_by_specs(df_Schoeck, df_Leviat, mrd_value, vrd_va
 # Function to format DataFrame columns
 def format_dataframe(df):
     if not df.empty:
-        for col in df.select_dtypes(include=['float']):
-            df[col] = df[col].map('{:.2f}'.format)
+        df.loc[:, df.select_dtypes(include=['float']).columns] = df.select_dtypes(include=['float']).apply(lambda x: x.astype(float).map('{:.2f}'.format))
     return df
 
 # Drop-down menu to choose input type
@@ -123,16 +131,16 @@ with col_height:
 # Conditional display of input boxes based on selection
 if input_type == "Model Number":
     # Input box for model number
-    encoded_value = st.text_input("Input Model Number:")
+    product_name = st.text_input("Input Model Number:")
     
-    if encoded_value:
+    if product_name:
         # Fetch specs from Schoeck and Leviat
-        mrd_value_schoeck, vrd_value_schoeck, height_value_schoeck = fetch_specs_by_model_schoeck(df_Schoeck, encoded_value)
-        mrd_value_leviat, vrd_value_leviat, height_value_leviat = fetch_specs_by_model_leviat(df_Leviat, encoded_value)
+        mrd_value_schoeck, vrd_value_schoeck, height_value_schoeck = fetch_specs_by_model_schoeck(df_Schoeck, product_name)
+        mrd_value_leviat, vrd_value_leviat, height_value_leviat = fetch_specs_by_model_leviat(df_Leviat, product_name)
         
-        if mrd_value_schoeck and vrd_value_schoeck and height_value_schoeck:
+        if mrd_value_schoeck is not None and vrd_value_schoeck is not None and height_value_schoeck is not None:
             # Search for alternatives in both databases using Schoeck specs
-            specific_product_schoeck = df_Schoeck[df_Schoeck['Encoded'] == encoded_value]
+            specific_product_schoeck = df_Schoeck[df_Schoeck['product_name'] == product_name]
             alternative_products_schoeck, alternative_products_leviat = fetch_alternative_products_by_specs(
                 df_Schoeck, df_Leviat, mrd_value_schoeck, vrd_value_schoeck, height_value_schoeck,
                 mrd_value_schoeck * mrd_lower_bound, mrd_value_schoeck * mrd_upper_bound,
@@ -140,11 +148,11 @@ if input_type == "Model Number":
                 height_value_schoeck - height_offset, height_value_schoeck + height_offset)
             
             if not alternative_products_schoeck.empty:
-                alternative_products_schoeck = format_dataframe(alternative_products_schoeck.drop(columns=['TableName']))
-                specific_product_schoeck = format_dataframe(specific_product_schoeck.drop(columns=['TableName']))
+                alternative_products_schoeck = format_dataframe(alternative_products_schoeck)
+                specific_product_schoeck = format_dataframe(specific_product_schoeck[['product_name', 'mRd', 'vRd', 'Height']])
 
                 def highlight_product_schoeck(row):
-                    if row['Encoded'] == encoded_value:
+                    if row['product_name'] == product_name:
                         return ['background-color: yellow'] * len(row)
                     else:
                         return [''] * len(row)
@@ -158,7 +166,7 @@ if input_type == "Model Number":
                 alternative_products_leviat = format_dataframe(alternative_products_leviat)
 
                 def highlight_product_leviat(row):
-                    if row['new_product_type'] == encoded_value:
+                    if row['new_product_type'] == product_name:
                         return ['background-color: yellow'] * len(row)
                     else:
                         return [''] * len(row)
@@ -166,9 +174,9 @@ if input_type == "Model Number":
                 st.write("Your Alternative Products from Leviat's Database:")
                 st.write(alternative_products_leviat.style.apply(highlight_product_leviat, axis=1))
         
-        if mrd_value_leviat and vrd_value_leviat and height_value_leviat:
+        if mrd_value_leviat is not None and vrd_value_leviat is not None and height_value_leviat is not None:
             # Search for alternatives in both databases using Leviat specs
-            specific_product_leviat = preprocess_additional_file(df_Leviat)[preprocess_additional_file(df_Leviat)['new_product_type'] == encoded_value]
+            specific_product_leviat = preprocess_additional_file(df_Leviat)[preprocess_additional_file(df_Leviat)['new_product_type'] == product_name]
             alternative_products_schoeck, alternative_products_leviat = fetch_alternative_products_by_specs(
                 df_Schoeck, df_Leviat, mrd_value_leviat, vrd_value_leviat, height_value_leviat,
                 mrd_value_leviat * mrd_lower_bound, mrd_value_leviat * mrd_upper_bound,
@@ -176,10 +184,10 @@ if input_type == "Model Number":
                 height_value_leviat - height_offset, height_value_leviat + height_offset)
             
             if not alternative_products_schoeck.empty:
-                alternative_products_schoeck = format_dataframe(alternative_products_schoeck)
+                alternative_products_schoeck = format_dataframe(alternative_products_schoeck[['product_name', 'mRd', 'vRd', 'Height']])
 
                 def highlight_product_schoeck(row):
-                    if row['Encoded'] == encoded_value:
+                    if row['product_name'] == product_name:
                         return ['background-color: yellow'] * len(row)
                     else:
                         return [''] * len(row)
@@ -193,7 +201,7 @@ if input_type == "Model Number":
                 alternative_products_leviat = format_dataframe(alternative_products_leviat)
 
                 def highlight_product_leviat(row):
-                    if row['new_product_type'] == encoded_value:
+                    if row['new_product_type'] == product_name:
                         return ['background-color: yellow'] * len(row)
                     else:
                         return [''] * len(row)
@@ -215,16 +223,16 @@ else:
             height_value - height_offset, height_value + height_offset)
         
         if not alternative_products_schoeck.empty:
-            alternative_products_schoeck = format_dataframe(alternative_products_schoeck.drop(columns=['TableName']))
+            alternative_products_schoeck = format_dataframe(alternative_products_schoeck[['product_name', 'mRd', 'vRd', 'Height']])
             st.write("Your Alternative Products from Schoeck's Database:")
-            st.write(alternative_products_schoeck, index=False)
+            st.write(alternative_products_schoeck)
         else:
             st.write("No alternative products found in Schoeck's files.")
         
         if not additional_products_leviat.empty:
             additional_products_leviat = format_dataframe(additional_products_leviat)
             st.write("Additional Products from Leviat's Database:")
-            st.write(additional_products_leviat, index=False)
+            st.write(additional_products_leviat)
         else:
             st.write("No additional products found in the Leviat's files.")
 
