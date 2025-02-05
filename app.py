@@ -10,7 +10,7 @@ st.write("## Examples of Model Number Format:")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.write("### Schoek Example:")
+    st.write("### Schöck Example:")
     st.write("T-K-M9-VV1-REI120-CV35-X80-H200-L1000-6.2")
 
 with col2:
